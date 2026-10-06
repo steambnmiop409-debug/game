@@ -12,6 +12,7 @@ General MIDI 음색으로 구조(49마디, 템포 변화, 침묵, 흔들리는 '
 - B 구간에서 첼레스타(평균율, 장난감 피아노 대역)가 같은 음을 겹쳐 A마다 맥놀이가 생긴다.
 - 29마디 1~2박은 틱까지 끊긴 완전 침묵이다.
 - 마지막은 F–C 빈 5도로 끝나며 C(으뜸화음)로 해결하지 않는다.
+- 빈 5도는 오르간과 함께 아이들의 입 다문 허밍(킨더클라비어의 87명)으로도 깔린다.
 """
 import math
 import os
@@ -27,7 +28,7 @@ BEND_RANGE_CENTS = 200                              # RPN 0 = ±2반음
 # ── 채널과 GM 음색 (0부터 셈) ─────────────────────────────────────────────
 CH_MBOX, CH_MBOX_FLAT, CH_CELESTA, CH_ORGAN = 0, 1, 2, 3
 CH_OOHS, CH_PIZZ, CH_TREM, CH_GLASS, CH_AAHS = 4, 5, 6, 7, 8
-CH_DRUMS, CH_ACCORDION, CH_PIANO, CH_FORK, CH_BREATH = 9, 10, 11, 12, 13
+CH_DRUMS, CH_ACCORDION, CH_PIANO, CH_FORK, CH_BREATH, CH_HUM = 9, 10, 11, 12, 13, 14
 
 CHANNELS = {
     # 채널: (트랙 이름, GM 프로그램, 볼륨)
@@ -45,6 +46,7 @@ CHANNELS = {
     CH_PIANO: ("Low Piano Cluster", 0, 92),
     CH_FORK: ("Tuning Fork A440 (ocarina stand-in)", 79, 100),
     CH_BREATH: ("Whisper (breath noise)", 121, 84),
+    CH_HUM: ("Children's Humming F-C (closed mouth)", 53, 58),
 }
 
 # ── 음이름 → MIDI 번호 (C4 = 60) ──────────────────────────────────────────
@@ -204,6 +206,15 @@ def build():
     org.ramp(CH_ORGAN, 11, bar_tick(3), bar_tick(5), 0, 70)
     org.cc(bar_tick(5), CH_ORGAN, 11, 48)     # A: 아주 여리게
     org.cc(bar_tick(17), CH_ORGAN, 11, 58)    # B: 여리게
+
+    # 아이들의 허밍 (3~28마디, 46~49마디): 오르간과 같은 빈 5도, 3음 없음
+    hum = tracks[CH_HUM]
+    hum.cc(0, CH_HUM, 11, 0)
+    for key in (NOTE["F3"], NOTE["C4"]):
+        hum.note(bar_tick(3), CH_HUM, key, bar_tick(29) - bar_tick(3) - 10, 64)
+        hum.note(bar_tick(46), CH_HUM, key, bar_tick(50) - bar_tick(46) - 10, 64)
+    hum.ramp(CH_HUM, 11, bar_tick(3), bar_tick(5), 0, 60)
+    hum.ramp(CH_HUM, 11, bar_tick(46), bar_tick(50) - 20, 30, 110, steps=32)
 
     # A (5~16): 오르골 + 가사
     play_song(5, SONG, CH_MBOX, CH_MBOX_FLAT, 92, lyrics=True)
