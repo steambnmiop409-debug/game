@@ -137,8 +137,7 @@ export class Sfx {
     for (let i = 0; i < 3; i++) add(() => this.reg(`paper_${i}`, paper(i)));
     for (let i = 0; i < 3; i++) add(() => this.reg(`velcro_${i}`, velcro(i)));
     add(() => this.reg('fold', paperFold()));
-    add(() => this.reg('defib_charge', defibCharge()));
-    add(() => this.reg('defib_zap', defibZap()));
+    add(() => this.reg('card_zap', cardZap()));
     add(() => this.reg('squelch', squelch()));
     add(() => this.reg('static', staticLoop()));
     add(() => this.reg('dial_tone', dualTone(350, 440, 2, 0.4)));
@@ -569,22 +568,7 @@ function velcro(v: number) {
   return normalize(out, 0.7);
 }
 
-function defibCharge() {
-  const dur = 2.2;
-  const n = Math.floor(dur * SR);
-  let ph = 0;
-  return normalize(
-    env(n, (t) => {
-      const f = 900 + 2400 * Math.pow(t / dur, 0.7);
-      ph += (2 * Math.PI * f) / SR;
-      const buzz = Math.sign(Math.sin(2 * Math.PI * 120 * t)) * 0.05;
-      return (Math.sin(ph) * 0.6 + Math.sin(ph * 2) * 0.15 + buzz) * Math.min(1, t / 0.1);
-    }),
-    0.45,
-  );
-}
-
-function defibZap() {
+function cardZap() {
   const r = rng(1234);
   const n = Math.floor(1.2 * SR);
   const out = env(n, (t) => Math.sin(2 * Math.PI * 48 * t * (1 - t * 0.5)) * Math.exp(-t / 0.18) * 1.2);

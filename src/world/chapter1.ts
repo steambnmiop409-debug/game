@@ -50,7 +50,7 @@ export function buildChapter1(): World {
   // ═══════════════════════════ 1층 (ground) ═══════════════════════════
   const g = new Kit(L, 'ground');
 
-  room({ id: 'outside', x0: -30, z0: 0, x1: 30, z1: 58, outdoor: true, floor: 'grass', area: 'ground', reverb: 'outside', step: 'asphalt', name: 'outside', light: 'none', fogColor: 0x4a4f55, fogDensity: 0.05, heart: 0.3 });
+  room({ id: 'outside', x0: -30, z0: 0, x1: 30, z1: 58, outdoor: true, floor: 'grass', area: 'ground', reverb: 'outside', step: 'asphalt', name: 'outside', light: 'none', fogColor: 0x4a4f55, fogDensity: 0.05 });
   room({ id: 'lobby', x0: -8, z0: -14, x1: 8, z1: 0, h: 9, floor: 'terrazzo', wall: 'paint_cream', wain: 'wainscot', wainH: 1.2, area: 'ground', reverb: 'lobby', step: 'tile', name: 'lobby', light: 'flicker', skin: 'facade', skinH: 12, fogColor: 0x1d252b, fogDensity: 0.03, fixtures: [[-4, -4], [4, -4], [-4, -10], [4, -10], [0, -7]] });
   room({ id: 'booth', x0: -11, z0: -6, x1: -8, z1: -2, h: 3, floor: 'lino_dark', wall: 'paint_grey', area: 'ground', reverb: 'ward', step: 'lino', name: 'booth', light: 'dim', fixtures: [[-9.5, -4]] });
   room({ id: 'security', x0: 8, z0: -12, x1: 13, z1: -7, h: 2.8, floor: 'carpet', wall: 'paint_grey', wain: 'wainscot', area: 'ground', reverb: 'ward', step: 'carpet', name: 'security', light: 'off', fixtures: [[10.5, -9.5]] });
@@ -307,6 +307,7 @@ export function buildChapter1(): World {
     [3.2, 0, 0, 'poster_rounds'],
     [21.2, 3, Math.PI, 'poster_lights'],
     [27.4, 0, 0, 'poster_swap'],
+    [16.0, 3, Math.PI, 'poster_hand'],
   ] as [number, number, number, string][]) {
     w.at(wx(x), z, r);
     w.decal(p, 0, 1.75, z === 0 ? 0.1 : -0.1, 0.9, p === 'poster_swap' ? 1.1 : 0.45);
@@ -511,7 +512,7 @@ export function buildChapter1(): World {
   room({ id: 'b_laundry', x0: bx(0), z0: 0, x1: bx(10), z1: 9, h: 3.6, floor: 'concrete', wall: 'concrete_wall', area: 'basement', reverb: 'laundry', step: 'tile', name: 'basement', light: 'flicker', fogColor: 0x141818, fogDensity: 0.05, fixtures: [[bx(3), 3], [bx(7.5), 3], [bx(3), 7], [bx(7.5), 7]] });
   room({ id: 'b_hall', x0: bx(10), z0: 3.5, x1: bx(17), z1: 5.5, h: 2.7, floor: 'lino_dark', wall: 'paint_grey', wain: 'wainscot', area: 'basement', reverb: 'corridor', step: 'lino', name: 'b_hall', light: 'dim', fixtures: [[bx(12), 4.5], [bx(15.5), 4.5]] });
   room({ id: 'airlock', x0: bx(17), z0: 3, x1: bx(19), z1: 6, h: 2.5, floor: 'tile_white', wall: 'wall_tile', area: 'basement', reverb: 'clean', step: 'tile', name: 'airlock', light: 'on', fixtures: [[bx(18), 4.5]] });
-  room({ id: 'clean', x0: bx(19), z0: 0, x1: bx(28), z1: 9, h: 3, floor: 'tile_white', wall: 'paint_white', wain: 'wall_tile', wainH: 1.4, area: 'basement', reverb: 'clean', step: 'tile', name: 'clean', light: 'on', fogColor: 0x262c30, fogDensity: 0.012, heart: 0.15, fixtures: [[bx(21.5), 2.5], [bx(25.5), 2.5], [bx(21.5), 6.5], [bx(25.5), 6.5]] });
+  room({ id: 'clean', x0: bx(19), z0: 0, x1: bx(28), z1: 9, h: 3, floor: 'tile_white', wall: 'paint_white', wain: 'wall_tile', wainH: 1.4, area: 'basement', reverb: 'clean', step: 'tile', name: 'clean', light: 'on', fogColor: 0x262c30, fogDensity: 0.012, fixtures: [[bx(21.5), 2.5], [bx(25.5), 2.5], [bx(21.5), 6.5], [bx(25.5), 6.5]] });
   open({ x0: bx(10), z0: 4, x1: bx(10), z1: 5, kind: 'door', id: 'b_door', mat: 'door_metal', open: true, swing: 1 });
   open({ x0: bx(17), z0: 4, x1: bx(17), z1: 5, kind: 'door', id: 'air1', mat: 'door_white', swing: 1 });
   open({ x0: bx(19), z0: 4, x1: bx(19), z1: 5, kind: 'door', id: 'air2', mat: 'door_white', swing: 1 });

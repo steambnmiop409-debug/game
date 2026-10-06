@@ -19,6 +19,8 @@ export class Lighting {
   flash: THREE.SpotLight;
   flashOn = true;
   flashLevel = 1;
+  /** 손전등이 비추는 면까지의 대략 거리 (가까우면 과노출을 막는다) */
+  flashDist = 5;
   private flashTarget = new THREE.Object3D();
   private pool: THREE.PointLight[] = [];
   key: THREE.SpotLight;
@@ -159,7 +161,8 @@ export class Lighting {
 
     // 손전등
     const fl = this.flashOn ? this.flashLevel : 0;
-    this.flash.intensity += (26 * fl - this.flash.intensity) * Math.min(1, dt * 18);
+    const near = clamp(Math.pow(this.flashDist / 3.4, 1.6), 0.1, 1);
+    this.flash.intensity += (26 * fl * near - this.flash.intensity) * Math.min(1, dt * 18);
 
     // 형광등 웅웅거림 (가장 가까운 켜진 두 개)
     this.humTimer -= dt;

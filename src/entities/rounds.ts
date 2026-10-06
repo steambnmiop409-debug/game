@@ -165,7 +165,7 @@ export class RoundsCrew {
   }
 
   /** 박자 */
-  onLub(sense: Sense) {
+  onBeat(sense: Sense) {
     for (const r of this.members) {
       const len = r.state === 'chase' ? 1.05 : r.state === 'suspect' ? 0.7 : 0.8;
       r.step(this.level, sense.pos, len);

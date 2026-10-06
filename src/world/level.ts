@@ -41,7 +41,6 @@ export interface RoomDef {
   light?: 'on' | 'dim' | 'off' | 'flicker' | 'dead' | 'none';
   /** 형광등 위치 (생략하면 자동 배치) */
   fixtures?: [number, number][];
-  heart?: number;
   fogColor?: number;
   fogDensity?: number;
   /** 바깥 공간(벽·천장 없음) */
@@ -72,7 +71,6 @@ export class Room implements RoomDef {
   skinH?: number;
   light: RoomDef['light'] = 'on';
   fixtures?: [number, number][];
-  heart = 1;
   fogColor?: number;
   fogDensity?: number;
   outdoor = false;
@@ -790,6 +788,24 @@ export class Level {
       if (segIntersect(ax, az, bx, bz, s.x0, s.z0, s.x1, s.z1)) n++;
     }
     return n;
+  }
+
+  /** 수평 광선이 처음 닿는 벽까지의 거리 (손전등 밝기 보정용) */
+  rayDist(ax: number, az: number, dx: number, dz: number, max: number): number {
+    let best = max;
+    for (const s of this.segs) {
+      if (!this.segActive(s) || s.low) continue;
+      const ex = s.x1 - s.x0;
+      const ez = s.z1 - s.z0;
+      const den = dx * ez - dz * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const wx = s.x0 - ax;
+      const wz = s.z0 - az;
+      const t = (wx * ez - wz * ex) / den;
+      const u = (wx * dz - wz * dx) / den;
+      if (t > 0 && t < best && u >= 0 && u <= 1) best = t;
+    }
+    return best;
   }
 
   /** 반지름을 고려한 직선 통과 가능 여부 (경로 다듬기) */

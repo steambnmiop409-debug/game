@@ -41,7 +41,7 @@ export class Player {
   /** 걷기 소리 재질을 결정하는 함수 */
   floorAt: ((x: number, z: number) => FloorMat) | null = null;
   room: Room | null = null;
-  lookLimit: { yaw: number; range: number } | null = null;
+  lookLimit: { yaw: number; range: number; down?: number } | null = null;
 
   get eyeHeight() {
     const stand = 1.62;
@@ -84,7 +84,7 @@ export class Player {
         const d = Math.atan2(Math.sin(this.yaw - this.lookLimit.yaw), Math.cos(this.yaw - this.lookLimit.yaw));
         const c = clamp(d, -this.lookLimit.range, this.lookLimit.range);
         this.yaw = this.lookLimit.yaw + c;
-        this.pitch = clamp(this.pitch, -0.6, 0.5);
+        this.pitch = clamp(this.pitch, this.lookLimit.down ?? -0.6, 0.5);
       }
     }
     this.room = level.roomAt(this.pos.x, this.pos.z);
@@ -219,6 +219,8 @@ export class Viewmodel {
   private raise = 0;
   private toolRaise = 0;
   scanAim = 0;
+  /** 'cab': 구급차 안 (계기판의 주황 불빛이 아래에서) */
+  env: 'normal' | 'cab' = 'normal';
   private t = 0;
 
   constructor() {
@@ -243,13 +245,21 @@ export class Viewmodel {
     this.left.add(cuff);
     this.skin.tex.center.set(0.5, 0.5);
     this.skin.tex.rotation = Math.PI / 2;
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.042, 0.3, 12), new THREE.MeshStandardMaterial({ map: this.skin.tex, roughness: 0.55 }));
-    fore.rotation.x = Math.PI / 2;
-    fore.rotation.y = Math.PI / 2;
+    // 팔뚝: 손목에서 가늘고 팔꿈치 쪽으로 굵어진다, 살짝 납작하다
+    const prof: THREE.Vector2[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const u = i / 12;
+      const rad = 0.03 + u * 0.011 + Math.sin(u * Math.PI) * 0.005 + (u > 0.55 ? Math.sin(((u - 0.55) / 0.45) * Math.PI) * 0.004 : 0);
+      prof.push(new THREE.Vector2(rad, -0.16 + u * 0.33));
+    }
+    const foreGeo = new THREE.LatheGeometry(prof, 16);
+    foreGeo.scale(1, 1, 0.82);
+    foreGeo.rotateX(Math.PI / 2);
+    const fore = new THREE.Mesh(foreGeo, new THREE.MeshStandardMaterial({ map: this.skin.tex, roughness: 0.62 }));
     fore.position.z = 0.0;
     this.left.add(fore);
     const handL = this.makeHand(-1);
-    handL.position.z = -0.19;
+    handL.position.z = -0.2;
     this.left.add(handL);
     this.root.add(this.left);
 
@@ -316,22 +326,49 @@ export class Viewmodel {
 
   private makeHand(side: number) {
     const g = new THREE.Group();
-    const skin = mat('skin', false).mat;
-    const glove = new THREE.MeshStandardMaterial({ color: 0x3b4a7a, roughness: 0.6 });
     const useGlove = side > 0;
-    const m = useGlove ? glove : skin;
-    const palm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.09), m);
-    g.add(palm);
-    for (let i = 0; i < 4; i++) {
-      const f = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.018, 0.065), m);
-      f.position.set(-0.03 + i * 0.02, -0.004, -0.07);
-      f.rotation.x = useGlove ? 0.9 : 0.25;
-      g.add(f);
+    const m = useGlove ? new THREE.MeshStandardMaterial({ color: 0x3b4a7a, roughness: 0.6 }) : new THREE.MeshStandardMaterial({ color: 0xe0b49a, roughness: 0.6 });
+    // 손바닥: 손목 쪽이 좁은 사다리꼴
+    const palmGeo = new THREE.BoxGeometry(0.075, 0.024, 0.085, 2, 1, 2);
+    const pp = palmGeo.getAttribute('position');
+    for (let i = 0; i < pp.count; i++) {
+      const z = pp.getZ(i);
+      pp.setX(i, pp.getX(i) * (z > 0 ? 0.82 : 1));
+      if (pp.getY(i) > 0) pp.setY(i, pp.getY(i) + (Math.abs(pp.getX(i)) < 0.02 ? 0.004 : 0));
     }
-    const th = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.018, 0.05), m);
-    th.position.set(side * -0.05, 0, -0.02);
-    th.rotation.y = side * 0.6;
-    g.add(th);
+    palmGeo.computeVertexNormals();
+    const palm = new THREE.Mesh(palmGeo, m);
+    g.add(palm);
+    // 손가락: 마디 두 개, 살짝 굽었다
+    const lens = [0.042, 0.048, 0.045, 0.036];
+    for (let i = 0; i < 4; i++) {
+      const base = new THREE.Group();
+      base.position.set(-0.028 + i * 0.019, -0.002, -0.043);
+      base.rotation.x = useGlove ? 0.9 : 0.18 + i * 0.05;
+      base.rotation.y = (i - 1.5) * -0.05;
+      const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.016, lens[i] * 0.55), m);
+      p1.position.z = -lens[i] * 0.27;
+      base.add(p1);
+      const j = new THREE.Group();
+      j.position.z = -lens[i] * 0.55;
+      j.rotation.x = useGlove ? 0.6 : 0.25;
+      const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, lens[i] * 0.5), m);
+      p2.position.z = -lens[i] * 0.24;
+      j.add(p2);
+      base.add(j);
+      g.add(base);
+    }
+    const thumb = new THREE.Group();
+    thumb.position.set(side * -0.04, -0.004, -0.005);
+    thumb.rotation.set(0.2, side * 0.75, side * -0.3);
+    const t1 = new THREE.Mesh(new THREE.BoxGeometry(0.019, 0.018, 0.032), m);
+    t1.position.z = -0.016;
+    thumb.add(t1);
+    const t2 = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.016, 0.026), m);
+    t2.position.set(0, 0, -0.042);
+    t2.rotation.x = 0.2;
+    thumb.add(t2);
+    g.add(thumb);
     return g;
   }
 
@@ -363,8 +400,24 @@ export class Viewmodel {
     this.t += dt;
     this.root.position.copy(cam.position);
     this.root.quaternion.copy(cam.quaternion);
-    this.amb.intensity = 0.25 + ambient * 0.6;
-    this.key.intensity = 0.15 + ambient * 0.5;
+    if (this.env === 'cab') {
+      // 계기판은 무릎 위 팔보다 앞쪽 위에 있다
+      this.amb.color.setHex(0xa8a8b4);
+      this.amb.intensity = 0.42;
+      this.key.color.setHex(0xffa060);
+      this.key.position.copy(cam.position).add(new THREE.Vector3(-0.3, 0.4, -1).applyQuaternion(cam.quaternion));
+      this.key.target.position.copy(cam.position);
+      this.key.target.updateMatrixWorld();
+      this.key.intensity = 2.4;
+    } else {
+      this.amb.color.setHex(0xc8d0d8);
+      this.amb.intensity = 0.25 + ambient * 0.6;
+      this.key.color.setHex(0xfff0e0);
+      this.key.position.copy(cam.position).add(new THREE.Vector3(0.3, 1, 0.6));
+      this.key.target.position.copy(cam.position);
+      this.key.target.updateMatrixWorld();
+      this.key.intensity = 0.15 + ambient * 0.5;
+    }
     this.handLight.intensity = flashOn ? 0.6 : 0;
     const bob = Math.sin(this.t * 1.6) * 0.004;
     const sway = p.bobAmt;
@@ -372,7 +425,7 @@ export class Viewmodel {
     const pose = this.pose;
     const target =
       pose === 'inspect'
-        ? { lx: -0.06, ly: -0.17, lz: -0.36, rx: -0.15, ry: 1.25, rz: -1.5 }
+        ? { lx: -0.1, ly: -0.15, lz: -0.3, rx: 0.51, ry: -0.56, rz: -0.44 }
         : pose === 'hold'
           ? { lx: -0.36, ly: -0.36, lz: -0.3, rx: 0.5, ry: 0.5, rz: 0.3 }
           : pose === 'reach'

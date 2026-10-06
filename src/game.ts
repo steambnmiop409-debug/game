@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Engine } from './core/engine';
 import { Input } from './core/input';
-import { Heart } from './core/heart';
+import { Pace } from './core/pace';
 import { AudioSys, type Voice } from './audio/audio';
 import { Sfx, type FloorMat } from './audio/sfx';
 import { Music } from './audio/music';
@@ -16,7 +16,7 @@ import { Interactions, type Interactable } from './gameplay/interact';
 import { Screen } from './gameplay/tapes';
 import { Prologue } from './gameplay/prologue';
 import { UI, type Settings } from './ui/ui';
-import { CHARTS, EXAMINE, FAIL, PLACES, TAPES, UNA, type Line, type Scan } from './data/text';
+import { CHARTS, CREDITS, EXAMINE, FAIL, NEXT, PLACES, TAPES, UNA, type Line, type Scan } from './data/text';
 import { clamp, damp, rng } from './core/util';
 import { Story } from './gameplay/story';
 
@@ -54,7 +54,7 @@ export class Game {
   audio = new AudioSys();
   sfx: Sfx;
   music: Music;
-  heart: Heart;
+  pace: Pace;
   world!: World;
   light!: Lighting;
   player = new Player();
@@ -105,7 +105,7 @@ export class Game {
   titleCam = 0;
   /** 1인칭 팔을 강제로 보이게 (프롤로그의 왼팔) */
   vmForce = false;
-  onLub: ((i: number) => void)[] = [];
+  onBeat: ((i: number) => void)[] = [];
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -115,8 +115,8 @@ export class Game {
     this.input = new Input(canvas);
     this.ui = new UI(uiRoot);
     this.sfx = new Sfx(this.audio);
-    this.heart = new Heart(() => this.audio.now);
-    this.music = new Music(this.audio, this.sfx, this.heart);
+    this.pace = new Pace(() => this.audio.now);
+    this.music = new Music(this.audio, this.sfx, this.pace);
     this.engine.overlay = this.vm.scene;
     this.loadSettings();
     // 개발용: ?fast — 그림자 끄고 낮은 해상도 (헤드리스 점검)
@@ -158,7 +158,7 @@ export class Game {
     this.rounds.onStep = (r) => this.sfx.roundsStep(new THREE.Vector3(r.pos.x, r.pos.y + 0.1, r.pos.z));
     this.rounds.onSpot = () => {
       this.music.stinger('discover');
-      this.heart.add(20);
+      this.pace.add(20);
       this.music.tension = 1;
     };
     this.rounds.onCatch = () => this.fail('rounds');
@@ -167,7 +167,11 @@ export class Game {
       this.audio.play(this.audio.buffers.get(`velcro_${Math.floor(this.r() * 3)}`), { pos: p, gain: 0.5 });
       this.audio.play(this.audio.any('hand'), { pos: p, gain: 0.7, lowpass: 600, rate: 0.7 });
     };
-    this.heart.on('lub', (e) => this.lub(e.index));
+    this.pace.on('beat', (e) => this.beat(e.index));
+    // 브라우저에서 Esc는 포인터 잠금만 풀고 키 입력은 오지 않는다 → 잠금이 풀리면 일시정지
+    this.input.onUnlock = () => {
+      if (this.state === 'play' && this.input.wantLock && !this.ui.docOpen) this.pause();
+    };
     // 첫 화면 (제목 장면을 미리 그려 둔다)
     this.setArea('ground');
     this.hoppy.place(new THREE.Vector3(0, 0.6, -6.5), 0, 'seated');
@@ -179,7 +183,7 @@ export class Game {
       gate.progress(0.05, '실제 악기 녹음을 불러오는 중…');
       await this.audio.loadSamples((d, n) => gate.progress(0.05 + (d / n) * 0.55, '실제 악기 녹음을 불러오는 중…'));
       await this.sfx.build((p) => gate.progress(0.6 + p * 0.4, '목소리와 효과음을 만드는 중…'));
-      this.heart.start();
+      this.pace.start();
       this.showTitle();
     });
     (window as unknown as { __ready: boolean }).__ready = true;
@@ -199,7 +203,6 @@ export class Game {
     this.setArea('ground');
     this.hoppy.place(new THREE.Vector3(0, 0.6, -6.5), 0, 'seated');
     this.light.setFlash(false);
-    this.music.heartLevel = 0;
     this.audio.stopAll(0.5, (v) => !!v.panner);
     for (const k of Object.keys(this.loops)) this.stopLoop(k);
     this.music.startTitle();
@@ -251,8 +254,8 @@ export class Game {
 
   /** 저장된 진행을 세계에 반영 */
   applyProgress() {
-    this.heart.reset(60);
-    this.heart.raiseFloor(this.save.wrong * 15);
+    this.pace.reset(60);
+    this.pace.raiseFloor(this.save.wrong * 15);
     this.hasDevice = !!this.save.flags.device;
     this.ui.parts(this.save.flags.quiz ? this.save.parts : null);
     this.vm.setSkin(Number(this.save.flags.encroach ?? 0.1));
@@ -319,7 +322,7 @@ export class Game {
     this.engine.setRenderScale(s.scale);
     this.ui.subSize(s.subSize);
     this.rounds.range = s.difficulty === 'green' ? 5.8 : s.difficulty === 'red' ? 9 : 7.5;
-    this.heart.mult = s.difficulty === 'green' ? 0.85 : s.difficulty === 'red' ? 1.2 : 1;
+    this.pace.mult = s.difficulty === 'green' ? 0.85 : s.difficulty === 'red' ? 1.2 : 1;
   }
 
   // ───────────────────────────── 스크립트 도우미 ─────────────────────────────
@@ -576,7 +579,7 @@ export class Game {
         return;
       }
       this.save.charges--;
-      this.sfx.play('defib_zap', { bus: 'ui', gain: 0.35, rate: 1.6 });
+      this.sfx.play('card_zap', { bus: 'ui', gain: 0.35, rate: 1.6 });
       this.audio.play(this.audio.any('glock'), { bus: 'ui', gain: 0.2, rate: 1.5 });
       vm.drawScreen(['RELAX ▶', `x${this.save.charges}`], 0);
       this.engine.post.u.uWhite.value = 0.12;
@@ -599,7 +602,7 @@ export class Game {
           hit = true;
         }
       }
-      if (hit) this.sfx.play('defib_zap', { bus: 'world', pos: eye.clone().addScaledVector(dir, 3), gain: 0.5 });
+      if (hit) this.sfx.play('card_zap', { bus: 'world', pos: eye.clone().addScaledVector(dir, 3), gain: 0.5 });
     }
   }
 
@@ -677,10 +680,10 @@ export class Game {
     if (this.area === 'road') {
       const scene = this.engine.scene;
       if (scene.fog instanceof THREE.FogExp2) {
-        scene.fog.color.setHex(0x3a3f45);
-        scene.fog.density = 0.055;
+        scene.fog.color.setHex(0x323940);
+        scene.fog.density = 0.042;
       }
-      scene.background = new THREE.Color(0x3a3f45);
+      scene.background = new THREE.Color(0x323940);
       this.light.hemi.intensity = 0.25;
       this.moon.intensity = 0.15;
       return;
@@ -808,12 +811,12 @@ export class Game {
 
   // ───────────────────────────── 박자 ─────────────────────────────
 
-  private lub(index: number) {
+  private beat(index: number) {
     if (this.state !== 'play') return;
     const sense = this.sense();
-    this.rounds.onLub(sense);
-    this.hoppy.onLub(this.world.level, this.player.pos);
-    for (const f of this.onLub) f(index);
+    this.rounds.onBeat(sense);
+    this.hoppy.onBeat(this.world.level, this.player.pos);
+    for (const f of this.onBeat) f(index);
   }
 
   sense() {
@@ -853,7 +856,7 @@ export class Game {
       this.light.update(dt, this.area);
       this.updateEnvironmentTitle(dt);
       this.music.update();
-      this.heart.update(dt);
+      this.pace.update(dt);
       this.renderFrame(dt);
       return;
     }
@@ -869,7 +872,7 @@ export class Game {
         this.pause();
         return;
       }
-      this.heart.update(dt);
+      this.pace.update(dt);
       this.player.update(dt, inp, this.world.level);
       if (this.player.mode === 'walk' && !this.busy) this.handleActions();
       else {
@@ -889,11 +892,26 @@ export class Game {
       this.story.update(dt);
     }
     if (this.state === 'fail' || this.state === 'credits') {
-      this.heart.update(dt);
+      this.pace.update(dt);
     }
+    this.light.flashDist = this.flashDistance();
     this.light.update(dt, this.area, this.extraDim);
     this.music.update();
     this.renderFrame(dt);
+  }
+
+  /** 시선 방향으로 벽·바닥·천장까지의 거리 */
+  private flashDistance() {
+    const p = this.player;
+    const eye = p.eye;
+    const dir = p.look;
+    let d = 8;
+    const h = Math.hypot(dir.x, dir.z);
+    if (h > 1e-3) d = Math.min(d, this.world.level.rayDist(eye.x, eye.z, dir.x / h, dir.z / h, 8) / h);
+    const r = p.room;
+    if (dir.y < -1e-3) d = Math.min(d, (eye.y - (r?.y ?? 0)) / -dir.y);
+    if (dir.y > 1e-3 && r && !r.outdoor) d = Math.min(d, (r.y + r.h - eye.y) / dir.y);
+    return d;
   }
 
   private updateEnvironmentTitle(dt: number) {
@@ -920,7 +938,7 @@ export class Game {
     this.ui.crosshair(!!it, true);
     if (it && inp.wasPressed(it.key ?? 'KeyE')) it.onUse();
     // 손전등
-    if (inp.wasPressed('KeyF')) {
+    if (inp.wasPressed('KeyF') && this.area !== 'road') {
       this.light.setFlash(!this.light.flashOn);
       this.sfx.play('switch', { bus: 'ui', gain: 0.35 });
     }
@@ -969,7 +987,6 @@ export class Game {
   // ───────────────────────────── 크레딧 ─────────────────────────────
 
   async showCreditsOnly() {
-    const { CREDITS, NEXT } = await import('./data/text');
     this.state = 'credits';
     this.music.stop(1);
     const c = this.ui.credits(CREDITS, NEXT);

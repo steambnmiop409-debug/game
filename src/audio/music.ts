@@ -1,14 +1,14 @@
 import type { AudioSys, PlayOpts, Voice } from './audio';
 import type { Sfx } from './sfx';
 import { LULLABY_BARS } from './sfx';
-import type { Heart } from '../core/heart';
+import type { Pace } from '../core/pace';
 import { makeBuffer, sing, type SungNote } from './synth';
 import { clamp, rng } from '../core/util';
 
 /**
  * 음악.
  * 1) 메인 테마 「Whatever You Become」 — 자장가 하나가 회사의 네 계단을 따라 '시술'받는 주제와 변주 (07_AUDIO S4)
- * 2) 게임 속 적응형 음악 — 모든 레이어가 건물의 심장 박동 위에 있다 (S7)
+ * 2) 게임 속 적응형 음악 — 추격 레이어와 자장가 조각이 회진의 걸음 박자를 따른다 (S7)
  * 3) 챕터 1 크레딧 송 「부품은 바꿔도 (Swap a Part)」 (S5)
  *
  * 미리 녹음한 음원이 아니라, 실제 악기 녹음(CC0)과 합성 악기를 시퀀서가 실시간으로 연주한다.
@@ -80,9 +80,7 @@ export class Music {
   tension = 0;
   chase = 0;
   zone = 0.5;
-  heartLevel = 1;
-  heartMuffle = 0;
-  /** 메뉴 음악 대기 중 박동 */
+  /** 긴장 레이어에서 울리고 있는 음 */
   private tensionVoices: Voice[] = [];
   private nextFragment = 0;
   private kidsBuffers = new Map<string, AudioBuffer>();
@@ -92,9 +90,9 @@ export class Music {
   constructor(
     private readonly a: AudioSys,
     private readonly sfx: Sfx,
-    heart: Heart,
+    pace: Pace,
   ) {
-    heart.on('schedule', (e) => this.onBeat(e.t, e.dubT, e.index, e.bpm));
+    pace.on('schedule', (e) => this.onBeat(e.t, e.index, e.bpm));
   }
 
   // ─────────────────────────── 공통 ───────────────────────────
@@ -282,19 +280,10 @@ export class Music {
 
   // ─────────────────────────── 게임 속 ───────────────────────────
 
-  /** 건물의 심장 (L0). 박동 예약 이벤트에서 호출된다 */
-  private onBeat(t: number, dubT: number, index: number, bpm: number) {
+  /** 걸음 박자의 예약 이벤트에서 호출된다: 추격 레이어와 자장가 조각이 이 박자를 따른다 */
+  private onBeat(t: number, index: number, bpm: number) {
     if (!this.a.running) return;
-    const lvl = this.heartLevel;
-    if (lvl > 0.01) {
-      const lp = 260 + 700 * (1 - this.heartMuffle);
-      const g = 0.75 * lvl;
-      this.a.play(this.a.any('heart'), { bus: 'heart', at: t, gain: g, lowpass: lp, send: 0.5, rate: 0.82 });
-      this.a.note('timp', 34, { bus: 'heart', at: t, gain: 0.35 * lvl, lowpass: lp * 0.7, send: 0.4 });
-      this.a.play(this.a.buffers.get('heart_ear'), { bus: 'heart', at: t, gain: 0.5 * lvl, rate: 0.7, send: 0.3 });
-      this.a.play(this.a.any('heart'), { bus: 'heart', at: dubT, gain: g * 0.55, lowpass: lp * 0.9, send: 0.45, rate: 0.95 });
-    }
-    // L4 추격: 박동마다 팀파니와 저음 현
+    // L4 추격: 박마다 팀파니와 저음 현
     if (this.chase > 0.05) {
       const c = this.chase;
       this.a.note('timp', index % 2 ? 41 : 46, { bus: 'music', at: t, gain: 0.5 * c, hall: 0.3 });
@@ -303,14 +292,14 @@ export class Music {
       this.a.note('cello', index % 4 < 2 ? 48 : 47, { bus: 'music', at: t + half, gain: 0.22 * c, lowpass: 1500, duration: half * 0.8 });
       if (index % 2 === 0) this.a.note('xylo', [67, 64, 67, 64, 72][index % 5], { bus: 'music', at: t + half * 0.5, gain: 0.25 * c, detune: (this.r() - 0.5) * 80 });
     }
-    // L2 구역 선율: 가끔 자장가의 조각이 멀리서 (박동에 맞춰)
+    // L2 구역 선율: 가끔 자장가의 조각이 멀리서 (박에 맞춰)
     if (this.zone > 0.05 && this.chase < 0.2 && t > this.nextFragment) {
       this.nextFragment = t + 28 + this.r() * 30;
       this.fragment(t + (60 / bpm), 60 / bpm);
     }
   }
 
-  /** 자장가 두 마디 조각. 8분음표 = 박동 간격의 1/3 */
+  /** 자장가 두 마디 조각. 8분음표 = 박 간격의 1/3 */
   private fragment(at: number, beat: number) {
     const start = Math.floor(this.r() * 4) * 2;
     const inst = this.r() < 0.6 ? 'mbox' : 'celesta';

@@ -20,6 +20,10 @@ export class Input {
   enabled = true;
   /** 포인터 잠금을 요청해도 되는 상태인가 (메뉴가 떠 있으면 false) */
   wantLock = false;
+  /** 잠금이 풀렸을 때 (Esc, 창 전환) */
+  onUnlock: (() => void) | null = null;
+  private everLocked = false;
+  private lockFails = 0;
 
   constructor(private readonly el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -63,24 +67,33 @@ export class Input {
     });
     window.addEventListener('wheel', (e) => (this.wheel += Math.sign(e.deltaY)), { passive: true });
     document.addEventListener('pointerlockchange', () => {
+      const was = this.locked;
       this.locked = document.pointerLockElement === this.el;
+      if (this.locked) this.everLocked = true;
       this.skipMoves = 2;
       this.mouseDX = 0;
       this.mouseDY = 0;
+      if (was && !this.locked) this.onUnlock?.();
     });
-    document.addEventListener('pointerlockerror', () => {
-      // 잠금이 막힌 환경: 드래그로 시점을 돌린다
-      this.dragLook = true;
-    });
+    document.addEventListener('pointerlockerror', () => this.lockFailed());
   }
 
   requestLock() {
     try {
       const p = this.el.requestPointerLock() as unknown as Promise<void> | undefined;
-      if (p && typeof p.catch === 'function') p.catch(() => (this.dragLook = true));
+      if (p && typeof p.catch === 'function') p.catch(() => this.lockFailed());
     } catch {
-      this.dragLook = true;
+      this.lockFailed();
     }
+  }
+
+  /**
+   * 잠금 실패. 브라우저는 Esc로 풀린 직후 잠시 다시 잠그지 못하게 하므로
+   * 한 번 실패로 포기하지 않는다. 한 번도 잠근 적 없이 여러 번 실패한 환경에서만 드래그로 시점을 돌린다.
+   */
+  private lockFailed() {
+    this.lockFails++;
+    if (!this.everLocked && this.lockFails >= 3) this.dragLook = true;
   }
 
   exitLock() {

@@ -6,6 +6,7 @@ import { makeMarcus, walkPose } from '../entities/models';
 import { Round } from '../entities/rounds';
 import { mat } from '../world/materials';
 import { rng } from '../core/util';
+import { logoUrl } from '../ui/ui';
 
 /**
  * 챕터 1 스크립트.
@@ -74,6 +75,8 @@ export class Story {
   /** 체크포인트 공통 초기화 */
   private reset(stage: Stage) {
     const g = this.g;
+    g.vmForce = false;
+    g.vm.env = 'normal';
     g.ui.clearSubs();
     g.ui.clearMenus();
     g.ui.card(null);
@@ -103,11 +106,10 @@ export class Story {
     g.music.chase = 0;
     g.music.tension = 0;
     g.music.zone = 0.5;
-    g.music.heartLevel = 0;
     g.audio.muffle(0, 0.2);
     g.audio.worldLevel(1, 0.2);
     g.audio.busLevel('music', 1, 0.2);
-    g.onLub = [];
+    g.onBeat = [];
     this.patrolOn = false;
     this.flags = {};
     this.thing?.removeFromParent();
@@ -413,7 +415,7 @@ export class Story {
   private penalty() {
     const g = this.g;
     g.save.wrong++;
-    g.heart.raiseFloor(15);
+    g.pace.raiseFloor(15);
     g.writeSave();
     const door = g.door('playroom').center.setY(1.2);
     for (let i = 0; i < 3; i++) setTimeout(() => g.sfx.play('door_slam', { pos: door, gain: 0.9, rate: 0.8 + i * 0.05 }), 600 + i * 420);
@@ -503,7 +505,7 @@ export class Story {
       }
     }
     g.save.wrong++;
-    g.heart.raiseFloor(15);
+    g.pace.raiseFloor(15);
     // 정전
     scr.off();
     g.sfx.play('buzz_2', { bus: 'world', pos: g.player.eye, gain: 0.8 });
@@ -551,7 +553,8 @@ export class Story {
     const seat = P.seatWorld();
     g.player.teleport(seat.clone().setY(seat.y - 1.62), 0);
     g.player.mode = 'locked';
-    g.player.lookLimit = { yaw: 0, range: 1.9 };
+    g.player.lookLimit = { yaw: 0, range: 1.9, down: -1.0 };
+    g.ui.inventory([]);
     g.audio.setRoom('ambulance');
     g.startLoop('engine', 'engine', { bus: 'amb', gain: 0.5, lowpass: 900 });
     g.startLoop('static', 'static', { bus: 'amb', gain: 0.03, highpass: 400 });
@@ -585,8 +588,10 @@ export class Story {
     // 왼팔
     g.ui.tip('왼팔이 가렵다 — 아래를 내려다본다', 6);
     const tArm = g.t;
-    await g.until(() => g.player.pitch < -0.6 || g.t - tArm > 9, tok);
+    await g.until(() => g.player.pitch < -0.5 || g.t - tArm > 9, tok);
+    g.ui.tip(null);
     g.vmForce = true;
+    g.vm.env = 'cab';
     g.vm.pose = 'inspect';
     g.vm.tool = 'none';
     await g.wait(1.4, tok);
@@ -597,11 +602,21 @@ export class Story {
     await g.sayAll(PROLOGUE.armLook, tok);
     g.vm.pose = 'idle';
     g.vmForce = false;
+    g.vm.env = 'normal';
     // 같은 표지판, 세 번
     for (let k = 0; k < 3; k++) {
       await g.wait(k === 0 ? 2 : 3, tok);
-      P.spawnSign(80);
-      await g.until(() => P.signDistance < -2, tok);
+      P.spawnSign(80, k === 2);
+      if (k === 2) {
+        // 마커스가 속도를 줄인다: 이번엔 표지판이 천천히 지나간다
+        await g.until(() => P.signDistance < 45, tok);
+        const t1 = g.t;
+        await g.until(() => {
+          P.speed = 15 - Math.min(1, (g.t - t1) / 2.5) * 9;
+          return P.signDistance < -2;
+        }, tok);
+        P.speed = 15;
+      } else await g.until(() => P.signDistance < -2, tok);
       if (k === 1) await g.say(L('마커스', PROLOGUE.deer[1]), tok);
       if (k === 2) {
         g.stopLoop('static', 0.1);
@@ -629,6 +644,7 @@ export class Story {
     await g.ui.fade(true, 1.5);
     g.stopLoop('engine', 1);
     g.player.lookLimit = null;
+    this.updateInventory();
     g.checkpoint('gate');
   }
 
@@ -654,7 +670,7 @@ export class Story {
     if (!g.save.flags.titleCard) {
       g.save.flags.titleCard = 1;
       await g.wait(1.5, tok);
-      g.ui.card(`<img src="${(await import('../../assets/brand/second_nature_logo.svg?url')).default}" alt="SECOND NATURE"><div class="small">CHAPTER 1 — 치료</div>`);
+      g.ui.card(`<img src="${logoUrl}" alt="SECOND NATURE"><div class="small">CHAPTER 1 — 치료</div>`);
       const at = g.audio.now;
       [76, 74, 76, 79, 81, 79, 76].forEach((m, i) => g.audio.note('mbox', m + 12, { bus: 'music', at: at + i * 0.4 + (i > 3 ? 0.4 : 0), gain: 0.32, hall: 0.6 }));
       await g.wait(5.5, tok);
@@ -831,7 +847,7 @@ export class Story {
     // 복도에 들어서면 회진이 시작된다
     await g.until(() => g.player.pos.x > 199.5, tok);
     await g.wait(2.5, tok);
-    g.heart.silence(2);
+    g.pace.silence(2);
     g.stopLoop('pipes', 0.3);
     await g.wait(1.5, tok);
     g.sfx.chime();
@@ -930,7 +946,7 @@ export class Story {
     if (intruder) intruder.scriptTarget = bed.under.clone().setY(0).addScaledVector(away, -1.3);
     let beatsNear = 0;
     let caught = false;
-    g.onLub.push(() => {
+    g.onBeat.push(() => {
       if (!intruder) return;
       if (intruder.pos.distanceTo(bed.under.clone().setY(0)) < 1.9) beatsNear++;
     });
@@ -995,6 +1011,7 @@ export class Story {
       await g.ui.fade(false, 0.8);
     }
     g.checkpoint('una');
+    g.ui.goal(null);
     g.save.flags.metUna = 1;
     g.allowHold = true;
     g.una.show(true);
@@ -1322,7 +1339,7 @@ export class Story {
     this.updateInventory();
     g.save.charges = Math.max(g.save.charges, 3);
     // 침묵, 그리고 무대 조명
-    g.heart.silence(2);
+    g.pace.silence(2);
     g.music.zone = 0;
     g.stopLoop('pipes', 0.2);
     g.audio.busLevel('amb', 0.2, 0.5);
@@ -1344,7 +1361,7 @@ export class Story {
     await g.wait(1.4, tok);
     // 추격 시작
     g.hoppy.state = 'chase';
-    g.heart.setImmediate(140);
+    g.pace.setImmediate(140);
     g.music.chase = 1;
     g.audio.busLevel('amb', 1, 1);
     g.una.run = true;
@@ -1383,7 +1400,7 @@ export class Story {
     lid.rotation.x = 0;
     spot.removeFromParent();
     g.hoppy.state = 'hidden';
-    g.heart.reset(60 + g.save.wrong * 15);
+    g.pace.reset(60 + g.save.wrong * 15);
   }
 
   // ───────────────────────────── 지하 ─────────────────────────────

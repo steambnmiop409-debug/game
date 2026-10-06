@@ -1083,7 +1083,7 @@ const DEFS: Record<string, () => THREE.Texture> = {
       false,
     ),
   // ── 게시물·간판 (영어 텍스처) ──
-  poster_tiptoe: () => poster('#f6efd8', 'TIPTOE TO THE', 'HEARTBEAT', 'just like Hoppy!', 'tiptoe', 90),
+  poster_hand: () => poster('#f6efd8', 'HOLD A FRIEND’S', 'HAND!', 'Stay together in the hallway.', 'hand', 90),
   poster_swap: () => poster('#e9f2f6', 'SWAP A PART,', 'KEEP YOUR HEART!', "Hoppy's Health Hour", 'swap', 91),
   poster_rounds: () => notice('ROUNDS BEGIN AT THE CHIME.', 'Please stay in your room.', '#d9e6ec', 92),
   poster_lights: () => notice('LIGHTS OUT AT 9.', 'Sleep is good medicine!', '#efe6c8', 93),
@@ -1144,49 +1144,9 @@ const DEFS: Record<string, () => THREE.Texture> = {
       98,
       false,
     ),
-  deer_sign: () =>
-    canvasTex(
-      64,
-      64,
-      (g, r) => {
-        g.clearRect(0, 0, 64, 64);
-        g.fillStyle = '#e2b52c';
-        g.beginPath();
-        g.moveTo(32, 1);
-        g.lineTo(63, 32);
-        g.lineTo(32, 63);
-        g.lineTo(1, 32);
-        g.closePath();
-        g.fill();
-        g.strokeStyle = '#151515';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(32, 5);
-        g.lineTo(59, 32);
-        g.lineTo(32, 59);
-        g.lineTo(5, 32);
-        g.closePath();
-        g.stroke();
-        // 뛰는 사슴
-        g.fillStyle = '#151515';
-        g.beginPath();
-        g.ellipse(31, 34, 10, 5, -0.2, 0, Math.PI * 2);
-        g.fill();
-        g.fillRect(38, 22, 3, 10);
-        g.beginPath();
-        g.ellipse(41, 21, 4, 3, 0.3, 0, Math.PI * 2);
-        g.fill();
-        g.fillRect(40, 14, 1, 6);
-        g.fillRect(43, 14, 1, 6);
-        g.fillRect(22, 37, 2, 10);
-        g.fillRect(24, 36, 2, 8);
-        g.fillRect(36, 37, 2, 9);
-        g.fillRect(34, 37, 2, 11);
-        grain(g, 0.06, r);
-      },
-      99,
-      false,
-    ),
+  deer_sign: () => deerSign(false),
+  /** 세 번째 표지판: 사슴의 앞발이 사람 손이고, 머리가 둥글다 */
+  deer_sign_wrong: () => deerSign(true),
   exit_sign: () =>
     canvasTex(
       64,
@@ -1652,6 +1612,142 @@ const DEFS: Record<string, () => THREE.Texture> = {
     ),
 };
 
+/** 사슴 출몰 경고 표지판 (노란 마름모, 뛰어오르는 사슴) */
+function deerSign(wrong: boolean) {
+  return canvasTex(
+    128,
+    128,
+    (g, r) => {
+      g.clearRect(0, 0, 128, 128);
+      const diamond = (inset: number) => {
+        g.beginPath();
+        g.moveTo(64, inset);
+        g.lineTo(128 - inset, 64);
+        g.lineTo(64, 128 - inset);
+        g.lineTo(inset, 64);
+        g.closePath();
+      };
+      g.fillStyle = '#e8b82a';
+      diamond(1);
+      g.fill();
+      // 반사 시트의 얼룩과 긁힘
+      g.save();
+      diamond(1);
+      g.clip();
+      for (let i = 0; i < 260; i++) {
+        g.fillStyle = r() < 0.5 ? 'rgba(120,80,10,0.10)' : 'rgba(255,240,170,0.10)';
+        g.fillRect(r() * 128, r() * 128, 1 + r() * 3, 1);
+      }
+      g.fillStyle = 'rgba(70,50,20,0.18)';
+      g.fillRect(0, 96, 128, 32);
+      g.restore();
+      g.strokeStyle = '#141414';
+      g.lineWidth = 3;
+      diamond(7);
+      g.stroke();
+      // 뛰어오르는 사슴 (오른쪽 위로)
+      g.fillStyle = '#141414';
+      g.strokeStyle = '#141414';
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.save();
+      g.translate(64, 66);
+      g.rotate(-0.22);
+      // 몸통
+      g.beginPath();
+      g.ellipse(0, 0, 21, 8.5, 0, 0, Math.PI * 2);
+      g.fill();
+      // 엉덩이와 꼬리
+      g.beginPath();
+      g.ellipse(-16, -1, 8, 8, 0, 0, Math.PI * 2);
+      g.fill();
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(-22, -5);
+      g.lineTo(-27, -9);
+      g.stroke();
+      // 목
+      g.lineWidth = 7;
+      g.beginPath();
+      g.moveTo(14, -3);
+      g.lineTo(22, -15);
+      g.stroke();
+      // 머리
+      if (!wrong) {
+        g.beginPath();
+        g.ellipse(26, -18, 6.5, 3.6, 0.35, 0, Math.PI * 2);
+        g.fill();
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(21, -21);
+        g.lineTo(23, -25);
+        g.stroke();
+        // 뿔
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(23, -21);
+        g.lineTo(19, -33);
+        g.moveTo(21, -27);
+        g.lineTo(15, -31);
+        g.moveTo(20, -31);
+        g.lineTo(23, -36);
+        g.stroke();
+      } else {
+        // 둥근 머리, 짧은 머리카락 선
+        g.beginPath();
+        g.arc(24, -19, 6.2, 0, Math.PI * 2);
+        g.fill();
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(19, -24);
+        g.lineTo(17, -27);
+        g.moveTo(23, -25);
+        g.lineTo(23, -28);
+        g.stroke();
+      }
+      // 앞다리 (앞으로 뻗음)
+      g.lineWidth = 3.4;
+      g.beginPath();
+      g.moveTo(14, 4);
+      g.lineTo(24, 10);
+      g.lineTo(33, 6);
+      g.moveTo(11, 5);
+      g.lineTo(20, 14);
+      g.lineTo(30, 13);
+      g.stroke();
+      if (wrong) {
+        // 발굽 대신 손가락
+        g.lineWidth = 1.3;
+        for (const [hx, hy] of [
+          [33, 6],
+          [30, 13],
+        ]) {
+          for (let k = -2; k <= 2; k++) {
+            g.beginPath();
+            g.moveTo(hx, hy);
+            g.lineTo(hx + 4.5, hy + k * 1.6);
+            g.stroke();
+          }
+        }
+      }
+      // 뒷다리 (뒤로 차냄)
+      g.lineWidth = 3.8;
+      g.beginPath();
+      g.moveTo(-18, 4);
+      g.lineTo(-24, 13);
+      g.lineTo(-36, 18);
+      g.moveTo(-14, 6);
+      g.lineTo(-22, 17);
+      g.lineTo(-33, 24);
+      g.stroke();
+      g.restore();
+      grain(g, 0.05, r);
+    },
+    wrong ? 118 : 117,
+    false,
+  );
+}
+
 function poster(bg: string, l1: string, l2: string, sub: string, kind: string, seed: number) {
   return canvasTex(
     128,
@@ -1661,18 +1757,31 @@ function poster(bg: string, l1: string, l2: string, sub: string, kind: string, s
       rect(g, 4, 4, 120, 152, hex(bg, 1.02));
       text(g, l1, 64, 18, 12, '#2a5a8a', { font: 'Arial Black, Arial' });
       text(g, l2, 64, 34, 15, '#d04a6a', { font: 'Arial Black, Arial' });
-      if (kind === 'tiptoe') {
-        drawHoppy(g, 64, 98, 24);
-        // 심전도 선
-        g.strokeStyle = '#d04a6a';
-        g.lineWidth = 2;
+      if (kind === 'hand') {
+        // 호피와 아이가 손을 잡고 있다
+        drawHoppy(g, 42, 100, 18);
+        g.fillStyle = '#f2c9a8';
         g.beginPath();
-        g.moveTo(8, 132);
-        for (let x = 8; x < 120; x += 2) {
-          const p = (x - 8) % 36;
-          g.lineTo(x, 132 - (p > 14 && p < 18 ? 14 : p >= 18 && p < 21 ? -6 : 0));
-        }
+        g.arc(88, 78, 9, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#5b8fd0';
+        g.fillRect(80, 88, 16, 24);
+        g.fillStyle = '#f2c9a8';
+        g.fillRect(81, 112, 5, 14);
+        g.fillRect(90, 112, 5, 14);
+        g.strokeStyle = '#f2c9a8';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(80, 94);
+        g.lineTo(60, 100);
         g.stroke();
+        g.fillStyle = '#2a2a2a';
+        g.fillRect(85, 76, 2, 2);
+        g.fillRect(90, 76, 2, 2);
+        g.fillStyle = '#d04a6a';
+        g.beginPath();
+        g.arc(70, 88, 4, 0, Math.PI * 2);
+        g.fill();
       } else if (kind === 'swap') {
         drawHoppy(g, 64, 96, 24);
         // 떼어 놓은 귀와 팔 (정상 시절에는 귀여운 장난)
@@ -1858,75 +1967,124 @@ export function unaFaceTex(expr: 'neutral' | 'smile' | 'worry' | 'laugh' | 'blan
  * 1인칭 왼팔의 피부. 침식(0..1)에 따라 매끈한 무늬가 손목에서 팔꿈치로 번진다 (G4.3)
  */
 export function armSkinCanvas(): { tex: THREE.CanvasTexture; set: (k: number) => void } {
+  // x = 팔 길이 (0 손목 → 256 팔꿈치), y = 둘레 (32 근처가 팔 안쪽)
+  const W = 256;
+  const H = 64;
   const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 32;
-  const g = c.getContext('2d')!;
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.magFilter = THREE.NearestFilter;
-  t.minFilter = THREE.NearestFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.wrapT = THREE.RepeatWrapping;
   const r0 = rng(1994);
-  // 무늬 곡선을 미리 만든다 (뿌리처럼 갈라지는 가는 선)
-  const curves: { pts: [number, number][]; start: number }[] = [];
-  for (let k = 0; k < 26; k++) {
-    let x = r0() * 20;
-    let y = r0() * 32;
+  const GRAFT = 150; // 이식 경계 (손목에서 이만큼)
+  // 경계: 자로 잰 듯 곧은 둘레 선. 흉터는 없고, 털과 점이 거기서 끊길 뿐이다
+  const edge: number[] = [];
+  for (let y = 0; y <= H; y++) edge.push(GRAFT);
+  // 뿌리처럼 갈라지는 선 (손목 안쪽에서 시작)
+  type Curve = { pts: [number, number][]; at: number };
+  const curves: Curve[] = [];
+  const grow = (x: number, y: number, a: number, len: number, depth: number, at: number) => {
     const pts: [number, number][] = [[x, y]];
-    let a = (r0() - 0.5) * 0.6;
-    for (let s = 0; s < 30; s++) {
-      a += (r0() - 0.5) * 0.5;
-      x += Math.cos(a) * 4;
-      y += Math.sin(a) * 2;
-      pts.push([x, ((y % 32) + 32) % 32]);
+    for (let s = 0; s < len; s++) {
+      a += (r0() - 0.5) * 0.7;
+      x += Math.cos(a) * 3;
+      y += Math.sin(a) * 2.2;
+      pts.push([x, y]);
+      if (depth < 2 && r0() < 0.08) grow(x, y, a + (r0() < 0.5 ? 0.8 : -0.8), Math.floor(len * 0.5), depth + 1, at + s / len);
     }
-    curves.push({ pts, start: x / 128 });
+    curves.push({ pts, at });
+  };
+  for (let k = 0; k < 9; k++) grow(8 + r0() * 30, 30 + (r0() - 0.5) * 10, (r0() - 0.5) * 1.2, 30 + Math.floor(r0() * 30), 0, r0() * 0.3);
+  // 정맥, 털, 점 (원래 피부에만)
+  const veins: [number, number][][] = [];
+  for (let k = 0; k < 3; k++) {
+    let x = 0;
+    let y = 22 + k * 9;
+    const v: [number, number][] = [[x, y]];
+    while (x < W) {
+      x += 6;
+      y += (r0() - 0.5) * 3;
+      v.push([x, y]);
+    }
+    veins.push(v);
   }
+  const hairs: [number, number, number][] = [];
+  for (let i = 0; i < 160; i++) hairs.push([GRAFT + 1 + r0() * (W - GRAFT - 1), r0() * H, r0()]);
+  const moles: [number, number][] = [];
+  for (let i = 0; i < 6; i++) moles.push([GRAFT + 4 + r0() * (W - GRAFT - 8), r0() * H]);
+
+  const line = (pts: [number, number][], upTo: number) => {
+    g.beginPath();
+    let on = false;
+    for (const [x, y] of pts) {
+      if (x > upTo) break;
+      if (!on) {
+        g.moveTo(x, y);
+        on = true;
+      } else g.lineTo(x, y);
+    }
+    g.stroke();
+  };
   let last = -1;
   const set = (k: number) => {
     const q = Math.round(k * 40) / 40;
     if (q === last) return;
     last = q;
     const r = rng(77);
-    g.fillStyle = '#e8c6ad';
-    g.fillRect(0, 0, 128, 32);
-    for (let i = 0; i < 160; i++) {
-      g.fillStyle = `rgba(200,150,120,${0.05 + r() * 0.06})`;
-      g.fillRect(Math.floor(r() * 128), Math.floor(r() * 32), 1, 1);
+    // 원래 피부 (팔꿈치 쪽): 따뜻하고 결이 있다
+    g.fillStyle = '#c99a7c';
+    g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 1400; i++) {
+      g.fillStyle = r() < 0.5 ? `rgba(150,95,70,${0.06 + r() * 0.08})` : `rgba(235,190,160,${0.05 + r() * 0.07})`;
+      g.fillRect(Math.floor(r() * W), Math.floor(r() * H), 1, 1);
     }
-    // 1994년의 이식 피부: 손목 쪽 반은 '지나치게' 매끈하다 (모공이 없다)
-    const smoothGrad = g.createLinearGradient(0, 0, 70, 0);
-    smoothGrad.addColorStop(0, 'rgba(244,214,196,0.65)');
-    smoothGrad.addColorStop(1, 'rgba(244,214,196,0)');
-    g.fillStyle = smoothGrad;
-    g.fillRect(0, 0, 70, 32);
-    const reach = 10 + q * 118;
-    g.lineWidth = 1;
+    // 정맥 (손목 안쪽이 더 진하다)
+    g.lineWidth = 2;
+    for (const v of veins) {
+      g.strokeStyle = 'rgba(95,110,150,0.22)';
+      line(v, W);
+    }
+    // 이식된 피부 (손목 쪽): 한 톤 밝고, 모공도 털도 없이 지나치게 매끈하다.
+    // 흉터는 없다 (DRI: "처음부터 이렇게 자란 피부"). 경계는 털과 점이 끊기는 자리로만 보인다
+    g.fillStyle = '#ddb49b';
+    g.beginPath();
+    g.moveTo(0, 0);
+    edge.forEach((x, y) => g.lineTo(x, y));
+    g.lineTo(0, H);
+    g.closePath();
+    g.fill();
+    const sheen = g.createLinearGradient(0, 0, 0, H);
+    sheen.addColorStop(0, 'rgba(255,235,225,0)');
+    sheen.addColorStop(0.5, 'rgba(255,235,225,0.22)');
+    sheen.addColorStop(1, 'rgba(255,235,225,0)');
+    g.fillStyle = sheen;
+    g.fillRect(0, 0, GRAFT, H);
+    // 털과 점 (원래 피부에만 있다)
+    for (const [x, y, a] of hairs) {
+      g.fillStyle = `rgba(70,45,30,${0.25 + a * 0.3})`;
+      g.fillRect(Math.floor(x), Math.floor(y), 2, 1);
+    }
+    for (const [x, y] of moles) {
+      g.fillStyle = 'rgba(90,55,40,0.7)';
+      g.fillRect(Math.floor(x), Math.floor(y), 2, 2);
+    }
+    // 뿌리 무늬: 피부 아래에서 자란다. 상처가 아니라 매끈하게 도드라진 결 (q가 클수록 멀리, 또렷하게)
+    const reach = 30 + q * (W - 30);
     for (const cv of curves) {
-      g.strokeStyle = `rgba(250,226,212,${0.35 + q * 0.5})`;
-      g.beginPath();
-      let started = false;
-      for (const [x, y] of cv.pts) {
-        if (x > reach) break;
-        if (!started) {
-          g.moveTo(x, y);
-          started = true;
-        } else g.lineTo(x, y);
-      }
-      g.stroke();
-      if (q > 0.5) {
-        g.strokeStyle = `rgba(200,140,120,${(q - 0.5) * 0.5})`;
-        g.beginPath();
-        let s2 = false;
-        for (const [x, y] of cv.pts) {
-          if (x > reach) break;
-          if (!s2) {
-            g.moveTo(x, y + 1);
-            s2 = true;
-          } else g.lineTo(x, y + 1);
-        }
-        g.stroke();
-      }
+      if (cv.at > q + 0.15) continue;
+      g.strokeStyle = `rgba(150,105,95,${0.18 + q * 0.3})`;
+      g.lineWidth = 2;
+      line(
+        cv.pts.map(([x, y]) => [x, y + 1] as [number, number]),
+        reach,
+      );
+      g.strokeStyle = `rgba(255,236,226,${0.35 + q * 0.4})`;
+      g.lineWidth = 1.5;
+      line(cv.pts, reach);
     }
     t.needsUpdate = true;
   };

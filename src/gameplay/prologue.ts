@@ -19,7 +19,9 @@ export class Prologue {
   private treeS: number[] = [];
   private roadMat: THREE.MeshStandardMaterial;
   private sign: THREE.Group;
+  private signMat: THREE.MeshStandardMaterial;
   private signZ = -9999;
+  private freshener: THREE.Object3D;
   private gateSign: THREE.Group;
   gateZ = -9999;
   private r = rng(1127);
@@ -76,22 +78,38 @@ export class Prologue {
       this.treeZ.push(-this.r() * 240 + 20);
       this.treeS.push(0.8 + this.r() * 0.7);
     }
-    // 사슴 출몰 표지판
+    // 사슴 출몰 표지판 (반사 시트: 전조등이 닿으면 빛난다)
     this.sign = new THREE.Group();
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.4, 0.08), mat('steel', false).mat);
-    post.position.y = 1.2;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.6, 0.08), mat('steel', false).mat);
+    post.position.y = 1.3;
+    post.castShadow = true;
     this.sign.add(post);
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshStandardMaterial({ map: tex('deer_sign'), transparent: true, alphaTest: 0.5, roughness: 0.3, metalness: 0.1, emissive: 0x332a10 }));
-    plate.position.set(0, 2.2, 0.05);
+    this.signMat = new THREE.MeshStandardMaterial({
+      map: tex('deer_sign'),
+      emissiveMap: tex('deer_sign'),
+      emissive: 0xffffff,
+      emissiveIntensity: 0,
+      transparent: true,
+      alphaTest: 0.5,
+      roughness: 0.35,
+      metalness: 0.1,
+    });
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), this.signMat);
+    plate.position.set(0, 2.35, 0.05);
     this.sign.add(plate);
-    this.sign.position.set(3.4, 0, -9999);
+    const backing = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshStandardMaterial({ map: tex('deer_sign'), color: 0x777a7c, transparent: true, alphaTest: 0.5, roughness: 0.6, metalness: 0.6 }));
+    backing.position.set(0, 2.35, 0.04);
+    backing.rotation.y = Math.PI;
+    this.sign.add(backing);
+    this.sign.rotation.y = -0.18;
+    this.sign.position.set(3.3, 0, -9999);
     g.add(this.sign);
     // 정문 간판 (끝에)
     this.gateSign = new THREE.Group();
     const board = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.7, 0.12), mat('wood_dark', false).mat);
     board.position.y = 1.8;
     this.gateSign.add(board);
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.6), new THREE.MeshStandardMaterial({ map: tex('gate_sign'), roughness: 0.6 }));
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.6), new THREE.MeshStandardMaterial({ map: tex('gate_sign'), color: 0x8a8a8a, roughness: 0.75 }));
     face.position.set(0, 1.8, 0.07);
     this.gateSign.add(face);
     for (const s of [-1, 1]) {
@@ -151,6 +169,64 @@ export class Prologue {
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.4, 0.06), mat('plastic_grey', false).mat);
     backWall.position.set(0, 1.3, 0.8);
     cab.add(backWall);
+    // 앞유리 위 테두리와 햇빛 가리개
+    const header = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.14), mat('plastic_grey', false).mat);
+    header.position.set(0, 1.94, -0.92);
+    cab.add(header);
+    for (const s of [-1, 1]) {
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.03, 0.26), mat('vinyl_seat', false).mat);
+      visor.position.set(s * 0.45, 1.9, -0.75);
+      visor.rotation.x = 0.12;
+      cab.add(visor);
+    }
+    // 대시보드 윗면 (계기판 무늬)과 앞유리 너머 흰 보닛
+    const dashTop = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.04, 0.32), mat('plastic_grey', false).mat);
+    dashTop.position.set(0, 1.13, -0.98);
+    dashTop.rotation.x = 0.08;
+    cab.add(dashTop);
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.12, 1.5), mat('white_paint', false).mat);
+    hood.position.set(0, 0.98, -1.95);
+    hood.rotation.x = 0.06;
+    hood.receiveShadow = true;
+    cab.add(hood);
+    // 룸미러와 매달린 방향제 (호피 스와피 판촉물)
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.07, 0.03), mat('plastic_dark', false).mat);
+    mirror.position.set(0, 1.8, -0.86);
+    mirror.rotation.y = 0.2;
+    cab.add(mirror);
+    this.freshener = new THREE.Group();
+    this.freshener.position.set(0.0, 1.76, -0.84);
+    const cord = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.12, 0.003), mat('plastic_dark', false).mat);
+    cord.position.y = -0.06;
+    this.freshener.add(cord);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.11), new THREE.MeshStandardMaterial({ map: tex('hoppy_face'), roughness: 0.8, side: THREE.DoubleSide }));
+    tag.position.y = -0.17;
+    this.freshener.add(tag);
+    cab.add(this.freshener);
+    // 차 안을 아주 약하게 채우는 바깥 빛 (안개에 퍼진 달빛)
+    const fill = new THREE.PointLight(0x8a9ab8, 1.4, 3.2, 2);
+    fill.position.set(0.3, 1.85, -0.4);
+    cab.add(fill);
+    // 조수석의 내 다리 (남색 구급대원 바지, 검은 작업화)
+    for (const lx of [0.33, 0.53]) {
+      const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.46), mat('navy', false).mat);
+      thigh.position.set(lx, 0.78, 0.08);
+      thigh.rotation.x = 0.06;
+      cab.add(thigh);
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), mat('navy', false).mat);
+      knee.position.set(lx, 0.79, -0.16);
+      cab.add(knee);
+      const shin = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.46, 0.13), mat('navy', false).mat);
+      shin.position.set(lx, 0.55, -0.24);
+      shin.rotation.x = -0.25;
+      cab.add(shin);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.26), mat('plastic_dark', false).mat);
+      boot.position.set(lx, 0.33, -0.36);
+      cab.add(boot);
+    }
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.04, 1.6), mat('rubber', false).mat);
+    floor.position.set(0, 0.27, -0.2);
+    cab.add(floor);
     // 마커스 (운전석)
     this.marcus = makeMarcus();
     this.marcus.root.position.set(-0.42, 0.2, 0.25);
@@ -168,12 +244,12 @@ export class Prologue {
     });
     cab.add(this.marcus.root);
     // 계기판 불빛
-    this.armLight = new THREE.PointLight(0xff9a50, 0.6, 2.2, 2);
+    this.armLight = new THREE.PointLight(0xff9a50, 0.9, 2.2, 2);
     this.armLight.position.set(-0.2, 1.15, -0.5);
     cab.add(this.armLight);
     // 전조등
-    this.headL = new THREE.SpotLight(0xfff2d8, 60, 60, 0.42, 0.5, 1.4);
-    this.headR = new THREE.SpotLight(0xfff2d8, 60, 60, 0.42, 0.5, 1.4);
+    this.headL = new THREE.SpotLight(0xfff2d8, 260, 70, 0.45, 0.45, 1.5);
+    this.headR = new THREE.SpotLight(0xfff2d8, 260, 70, 0.45, 0.45, 1.5);
     for (const [h, x] of [
       [this.headL, -0.7],
       [this.headR, 0.7],
@@ -189,9 +265,13 @@ export class Prologue {
     this.headL.shadow.mapSize.set(512, 512);
   }
 
-  /** 사슴 표지판을 앞쪽에 세운다 */
-  spawnSign(dist = 70) {
+  /** 사슴 표지판을 앞쪽에 세운다 (wrong: 세 번째, 어딘가 틀린 사슴) */
+  spawnSign(dist = 70, wrong = false) {
     this.signZ = -dist;
+    const t = tex(wrong ? 'deer_sign_wrong' : 'deer_sign');
+    this.signMat.map = t;
+    this.signMat.emissiveMap = t;
+    this.signMat.needsUpdate = true;
   }
 
   spawnGate(dist = 60) {
@@ -223,6 +303,11 @@ export class Prologue {
     // 표지판
     this.signZ += dz;
     this.sign.position.z = this.signZ;
+    // 반사 시트: 전조등 범위 안에서 밝아진다
+    const sd = -this.signZ;
+    this.signMat.emissiveIntensity = sd > 2 && sd < 55 ? 0.55 * Math.min(1, (55 - sd) / 20) : 0;
+    this.freshener.rotation.z = Math.sin(this.t * 1.9) * 0.18 * this.rumble + Math.sin(this.t * 7.3) * 0.03;
+    this.freshener.rotation.y = Math.sin(this.t * 0.7) * 0.5;
     this.gateZ += dz;
     this.gateSign.position.z = this.gateZ;
     // 차체 흔들림

@@ -2,6 +2,8 @@ import type { Line } from '../data/text';
 import type { Doc, Scan } from '../data/text';
 import logoUrl from '../../assets/brand/second_nature_logo.svg?url';
 
+export { logoUrl };
+
 /**
  * DOM 위의 HUD와 메뉴. 글꼴은 갈무리(픽셀 한글).
  * 자막은 대사 큐로 흘러가고, await로 끝을 기다릴 수 있다.
@@ -124,7 +126,12 @@ export class UI {
     this.placeTimer = 4;
   }
 
-  tip(text: string, secs = 6) {
+  tip(text: string | null, secs = 6) {
+    if (text === null) {
+      this.tipEl.classList.remove('on');
+      this.tipTimer = 0;
+      return;
+    }
     this.tipEl.innerHTML = keys(text);
     this.tipEl.classList.add('on');
     this.tipTimer = secs;

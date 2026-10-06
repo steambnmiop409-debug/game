@@ -58,7 +58,7 @@ export class Hoppy {
     r.armR.rotation.x = 0.4;
   }
 
-  onLub(level: Level, target: THREE.Vector3) {
+  onBeat(level: Level, target: THREE.Vector3) {
     if (this.state !== 'chase' && this.state !== 'script') return;
     const goal = this.state === 'script' ? this.scriptTarget : target;
     if (!goal) return;

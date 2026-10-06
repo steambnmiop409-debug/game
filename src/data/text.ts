@@ -445,7 +445,7 @@ export const GOALS: Record<string, string> = {
 export const TIPS = {
   move: '[WASD] 이동 · [Shift] 달리기 · [Ctrl]/[C] 웅크리기 · [E] 살피기/사용',
   flash: '[F] 손전등',
-  tool: '[2] 재지시기 · 꾹 누르기 [좌클릭] 판독 · [우클릭] 진정 카드',
+  tool: '재지시기: [좌클릭] 꾹 누르기 = 판독 · [우클릭] = 진정 카드',
   scanSelf: '재지시기를 든 채 아래를 보고 [좌클릭]: 자기 왼팔 판독',
   talk: '우나를 보고 [E]: 말 걸기',
   hold: '[Q] 꾹: 우나의 손 잡기 (달릴 수 없다)',
