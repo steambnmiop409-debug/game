@@ -1159,6 +1159,9 @@ const DEFS: Record<string, () => THREE.Texture> = {
       false,
     ),
   stair_sign: () => notice('STAIRWELL CLOSED', 'Use elevators. — Facilities', '#e9d36a', 101),
+  /** 문 위의 방 이름 표지 (불이 들어오는 아크릴판) */
+  security_sign: () => roomSign('SECURITY', 'STAFF ONLY', 102),
+  elevator_sign: () => roomSign('ELEVATORS', '▲ 3F PEDIATRICS', 103),
   portrait: () =>
     canvasTex(
       96,
@@ -1806,6 +1809,22 @@ function poster(bg: string, l1: string, l2: string, sub: string, kind: string, s
       text(g, sub, 64, 148, 8, '#555', { font: 'Arial', weight: 'italic bold' });
       blotch(g, r, 10, '#5a4a20', 20, 0.06);
       grain(g, 0.04, r);
+    },
+    seed,
+    false,
+  );
+}
+
+function roomSign(l1: string, l2: string, seed: number) {
+  return canvasTex(
+    128,
+    32,
+    (g, r) => {
+      fill(g, '#24323a');
+      rect(g, 2, 2, 124, 28, '#2f5d55');
+      text(g, l1, 64, 13, 13, '#f4f1e6', { font: 'Arial Black, Arial, sans-serif' });
+      text(g, l2, 64, 26, 7, '#cfe3dc', { font: 'Arial', weight: 'bold' });
+      grain(g, 0.03, r);
     },
     seed,
     false,

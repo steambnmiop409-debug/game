@@ -53,15 +53,15 @@ export function buildChapter1(): World {
   room({ id: 'outside', x0: -30, z0: 0, x1: 30, z1: 58, outdoor: true, floor: 'grass', area: 'ground', reverb: 'outside', step: 'asphalt', name: 'outside', light: 'none', fogColor: 0x4a4f55, fogDensity: 0.05 });
   room({ id: 'lobby', x0: -8, z0: -14, x1: 8, z1: 0, h: 9, floor: 'terrazzo', wall: 'paint_cream', wain: 'wainscot', wainH: 1.2, area: 'ground', reverb: 'lobby', step: 'tile', name: 'lobby', light: 'flicker', skin: 'facade', skinH: 12, fogColor: 0x1d252b, fogDensity: 0.03, fixtures: [[-4, -4], [4, -4], [-4, -10], [4, -10], [0, -7]] });
   room({ id: 'booth', x0: -11, z0: -6, x1: -8, z1: -2, h: 3, floor: 'lino_dark', wall: 'paint_grey', area: 'ground', reverb: 'ward', step: 'lino', name: 'booth', light: 'dim', fixtures: [[-9.5, -4]] });
-  room({ id: 'security', x0: 8, z0: -12, x1: 13, z1: -7, h: 2.8, floor: 'carpet', wall: 'paint_grey', wain: 'wainscot', area: 'ground', reverb: 'ward', step: 'carpet', name: 'security', light: 'off', fixtures: [[10.5, -9.5]] });
+  room({ id: 'security', x0: 8, z0: -12, x1: 13, z1: -7, h: 2.8, floor: 'carpet', wall: 'paint_grey', wain: 'wainscot', area: 'ground', reverb: 'ward', step: 'carpet', name: 'security', light: 'dim', fixtures: [[10.5, -9.5]] });
   room({ id: 'carG', x0: -6, z0: -16.5, x1: -4, z1: -14, h: 2.5, floor: 'lino_dark', wall: 'steel', area: 'ground', reverb: 'elevator', step: 'metal', name: 'elevator', light: 'on', fixtures: [[-5, -15.25]] });
   room({ id: 'carG2', x0: 4, z0: -16.5, x1: 6, z1: -14, h: 2.5, floor: 'lino_dark', wall: 'steel', area: 'ground', reverb: 'elevator', step: 'metal', light: 'off' });
 
-  open({ x0: -1, z0: 0, x1: 1, z1: 0, kind: 'double', id: 'entrance', mat: 'door_white', open: true, swing: -1 });
+  open({ x0: -1.5, z0: 0, x1: 1.5, z1: 0, kind: 'double', id: 'entrance', mat: 'door_white', open: true, swing: -1 });
   open({ x0: -7, z0: 0, x1: -3, z1: 0, kind: 'window', sill: 0.9, top: 3.4 });
   open({ x0: 3, z0: 0, x1: 7, z1: 0, kind: 'window', sill: 0.9, top: 3.4 });
   open({ x0: -8, z0: -5.5, x1: -8, z1: -2.5, kind: 'arch', top: 2.6 });
-  open({ x0: 8, z0: -9, x1: 8, z1: -8, kind: 'door', id: 'security', mat: 'door_metal', swing: 1 });
+  open({ x0: 8, z0: -9, x1: 8, z1: -8, kind: 'door', id: 'security', mat: 'door_metal', swing: 1, open: true });
   open({ x0: -6, z0: -14, x1: -4, z1: -14, kind: 'elevator', id: 'elevG' });
   open({ x0: 4, z0: -14, x1: 6, z1: -14, kind: 'elevator', id: 'elevG2', locked: true });
   open({ x0: -8, z0: -12, x1: -8, z1: -11, kind: 'door', id: 'stairG', mat: 'door_metal', locked: true });
@@ -111,7 +111,7 @@ export function buildChapter1(): World {
   sedan(g, 17, 8, -0.1);
   // 구급차 (정문 바깥, 건물을 향해)
   const amb = ambulance(g, 1.5, 46, Math.PI);
-  spawn.gate = { pos: V(-1.2, 0, 43), yaw: 0 };
+  spawn.gate = { pos: V(-0.4, 0, 43), yaw: 0 };
   at.marcusWalk = V(18, 0, 56);
 
   // ── 로비 ──
@@ -179,6 +179,10 @@ export function buildChapter1(): World {
   at.elevG = V(-5, 1.2, -13.6);
   g.at(3.6, -14, 0);
   g.decal('stair_sign', 1.4, 2.6, 0.1, 0.6, 0.3);
+  g.at(-5, -14, 0);
+  g.decal('elevator_sign', 0, 2.95, 0.12, 1.4, 0.35, { emissive: true });
+  g.at(8, -8.5, -Math.PI / 2);
+  g.decal('security_sign', 0, 2.45, 0.12, 1.2, 0.3, { emissive: true });
   // 엘리베이터 내부 조작판
   g.at(-4, -15.25, -Math.PI / 2);
   g.box('steel', 0, 0.9, 0.1, 0.3, 0.6, 0.04);
@@ -201,7 +205,7 @@ export function buildChapter1(): World {
   crtMonitor(g, 11.0, -11.15, 0, 0.78);
   crtMonitor(g, 11.5, -11.2, 0, 0.78);
   crtMonitor(g, 12.0, -11.15, 0, 0.78);
-  chair(g, 11.4, -10.0, Math.PI, 'vinyl_seat');
+  chair(g, 11.4, -10.3, Math.PI, 'vinyl_seat');
   shelf(g, 12.55, -8.2, -Math.PI / 2, 1.4, 1.8, 0.45, 'files');
   // 충전 거치대 위의 재지시기
   g.at(10.4, -10.9, 0);

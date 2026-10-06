@@ -5,11 +5,12 @@ import { clamp } from './util';
  * 걸음 박자 (G3.1). 회진과 호피 스와피는 이 박자에 맞춰 한 걸음씩 끊어 걷는다 (발디 오마주).
  * 퀴즈 오답과 발견으로 빨라지고, 추격 음악도 이 박자를 따른다.
  *
- * 시간은 오디오 시계(초)를 쓴다. 소리는 미리(lookahead) 예약하고,
- * 게임 로직의 'beat' 이벤트는 실제로 그 시각이 되었을 때 발생한다.
+ * 박의 시각은 게임 시간으로 센다: 프레임이 느린 컴퓨터에서 게임이 느려지면 걸음도 같이 느려진다
+ * (오디오 시계를 쓰면 느린 컴퓨터에서 크리처만 상대적으로 빨라진다).
+ * 소리 예약용 'schedule' 이벤트에는 오디오 시각으로 바꾼 값을 넘긴다.
  */
 export interface PaceEvents extends Record<string, unknown> {
-  /** 오디오 예약용: 아직 오지 않은 박 (t = 오디오 시각, offT = 엇박) */
+  /** 오디오 예약용: 아직 오지 않은 박 (t = 오디오 시각, offT = 엇박의 오디오 시각) */
   schedule: { t: number; offT: number; index: number; bpm: number };
   /** 게임 로직용: 방금 한 박이 지났다 */
   beat: { index: number; bpm: number; t: number };
@@ -31,6 +32,8 @@ export class Pace extends Emitter<PaceEvents> {
   private silentBeats = 0;
   private running = false;
   private decayAcc = 0;
+  /** 게임 시간 (update의 dt를 더한다) */
+  private gt = 0;
 
   constructor(private readonly clock: () => number) {
     super();
@@ -46,7 +49,7 @@ export class Pace extends Emitter<PaceEvents> {
 
   start() {
     this.running = true;
-    this.next = this.clock() + 0.4;
+    this.next = this.gt + 0.4;
   }
 
   stop() {
@@ -77,7 +80,9 @@ export class Pace extends Emitter<PaceEvents> {
 
   update(dt: number) {
     if (!this.running) return;
-    const now = this.clock();
+    this.gt += dt;
+    const now = this.gt;
+    const audioNow = this.clock();
     // BPM은 목표를 부드럽게 따라간다
     const tgt = this.targetBpm;
     this.bpm += (tgt - this.bpm) * (1 - Math.exp(-dt * 1.2));
@@ -87,7 +92,6 @@ export class Pace extends Emitter<PaceEvents> {
       this.decayAcc -= 10;
       this.boost = Math.max(0, this.boost - 5);
     }
-    // 오디오 시계가 멈췄다 다시 가면(탭 전환 등) 기준을 다시 잡는다
     if (this.next < now - 1) this.next = now + 0.05;
 
     // 미리 예약 (0.2초 앞까지)
@@ -98,7 +102,8 @@ export class Pace extends Emitter<PaceEvents> {
       else {
         this.index++;
         this.pending.push({ t, index: this.index });
-        this.emit('schedule', { t, offT: t + Math.min(0.32, iv * 0.35), index: this.index, bpm: this.bpm });
+        const at = audioNow + (t - now);
+        this.emit('schedule', { t: at, offT: at + Math.min(0.32, iv * 0.35), index: this.index, bpm: this.bpm });
       }
       this.next = t + iv;
     }
@@ -116,6 +121,6 @@ export class Pace extends Emitter<PaceEvents> {
     this.bpm = bpm;
     this.silentBeats = 0;
     this.pending.length = 0;
-    this.next = this.clock() + 0.3;
+    this.next = this.gt + 0.3;
   }
 }

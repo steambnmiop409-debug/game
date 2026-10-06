@@ -253,10 +253,17 @@ export function addFixtures(level: Level) {
       for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) spots.push([room.x0 + ((i + 0.5) * w) / nx, room.z0 + ((j + 0.5) * d) / nz]);
     }
     const b = level.batch(room.area, room.group);
+    // 천장이 높은 방(로비 9m)은 매입등 대신 줄에 매단 등을 4.2m 높이에 단다. 빛이 바닥까지 닿는다
+    const pendant = room.h > 4.5;
     for (const [x, z] of spots) {
-      const y = room.y + room.h - 0.02;
+      const top = room.y + room.h;
+      const y = pendant ? room.y + 4.2 : top - 0.02;
+      if (pendant) {
+        for (const s of [-1, 1]) b.box('steel', x + s * 0.5, y, z, 0.02, top - y, 0.02, 0, { aoFloor: false });
+        b.box('paint_metal', x, y - 0.02, z, 1.3, 0.1, 0.7, 0, { aoFloor: false });
+      }
       // 매입형 등기구 틀
-      b.box('fixture_off', x, y - 0.04, z, 1.24, 0.04, 0.64, 0, { aoFloor: false, noTop: true });
+      b.box('fixture_off', x, y - 0.04, z, 1.24, 0.04, 0.64, 0, { aoFloor: false, noTop: !pendant });
       const panel = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 0.54), mat('fixture', false).mat.clone());
       panel.rotation.x = Math.PI / 2;
       panel.position.set(x, y - 0.045, z);

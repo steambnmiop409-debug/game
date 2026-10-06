@@ -116,7 +116,15 @@ export class UI {
     } else this.promptEl.classList.remove('on');
   }
 
+  /** 지금 목표 문장과, 그 목표가 정해진 시각 (힌트 타이머) */
+  goalText: string | null = null;
+  goalAt = 0;
+
   goal(text: string | null) {
+    if (text !== this.goalText) {
+      this.goalText = text;
+      this.goalAt = performance.now();
+    }
     this.goalEl.innerHTML = text ? `목표<b>${esc(text)}</b>` : '';
   }
 

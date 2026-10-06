@@ -680,6 +680,9 @@ export class Story {
     g.ui.tip(TIPS.move, 7);
     await g.wait(2, tok);
     g.ui.tip(TIPS.flash, 4);
+    const th = g.t;
+    await g.until(() => g.player.pos.z < -0.5 || g.t - th > 4.5, tok);
+    if (g.player.pos.z > -0.5) g.ui.tip(TIPS.hint, 6);
     await g.until(() => g.player.pos.z < -0.5, tok);
     g.stopLoop('wind', 2);
   }
@@ -741,36 +744,41 @@ export class Story {
         this.flags.riding = true;
       },
     });
-    // 경비실: 재지시기와 직원 카드
+    // 경비실: 재지시기와 직원 카드 (어느 쪽을 먼저 집어도 둘 다 챙긴다)
+    const takeTool = () => {
+      if (g.save.flags.device) return;
+      g.save.flags.device = 1;
+      g.hasDevice = true;
+      g.writeSave();
+      (g.world.meshes.toolOnDock as THREE.Mesh).visible = false;
+      g.inter.remove('tool');
+      g.sfx.play('switch', { bus: 'ui', gain: 0.5 });
+      g.sfx.beep(0.3);
+      g.ui.say(L('', '"SN-RI 3 — 재지시기(Re-Instructor). 세컨드 네이처 직원 전용."'));
+      g.ui.say(L('', '손잡이 옆에 초록 카드가 꽂혀 있다. "RELAX — 진정".'));
+      g.ui.tip(TIPS.tool, 8);
+      this.updateInventory();
+    };
     if (!g.save.flags.device) {
       g.inter.add({
         id: 'tool',
         pos: at.tool,
-        range: 2,
+        range: 2.4,
         prompt: '[E] 충전 거치대의 기기를 집는다',
-        onUse: () => {
-          g.save.flags.device = 1;
-          g.hasDevice = true;
-          g.writeSave();
-          (g.world.meshes.toolOnDock as THREE.Mesh).visible = false;
-          g.inter.remove('tool');
-          g.sfx.play('switch', { bus: 'ui', gain: 0.5 });
-          g.sfx.beep(0.3);
-          g.ui.say(L('', '"SN-RI 3 — 재지시기(Re-Instructor). 세컨드 네이처 직원 전용."'));
-          g.ui.say(L('', '손잡이 옆에 초록 카드가 꽂혀 있다. "RELAX — 진정".'));
-          g.ui.tip(TIPS.tool, 8);
-          this.updateInventory();
-        },
+        onUse: takeTool,
       });
     } else (g.world.meshes.toolOnDock as THREE.Mesh).visible = false;
     if (!g.save.flags.card) {
       g.inter.add({
         id: 'card',
         pos: at.card,
-        range: 2,
+        range: 2.5,
         prompt: '[E] 직원 카드',
-        enabled: () => g.hasDevice,
         onUse: () => {
+          if (!g.save.flags.device) {
+            g.ui.say(L('', '카드를 빼는데, 책상 위 충전 거치대의 기기가 초록 불을 깜빡인다. 같이 챙긴다.'));
+            takeTool();
+          }
           g.save.flags.card = 1;
           g.writeSave();
           (g.world.meshes.card as THREE.Mesh).visible = false;
@@ -787,7 +795,13 @@ export class Story {
     } else (g.world.meshes.card as THREE.Mesh).visible = false;
     // 진행: 카드 → (동상이 사라진 걸 본다) → 엘리베이터
     let thud = false;
+    let upstairs = false;
     await g.until(() => {
+      // 공중전화를 확인했으면: 신고자는 위층에 있다
+      if (!upstairs && g.save.flags.handset && !g.save.flags.card && !called && g.ui.goalText === GOALS.lobby) {
+        upstairs = true;
+        g.ui.goal(GOALS.upstairs);
+      }
       if (this.flags.statueGone && !thud && g.player.room?.id === 'lobby') {
         thud = true;
         g.sfx.play('thud', { bus: 'world', pos: new THREE.Vector3(0, 9, -14), gain: 0.9 });
@@ -1326,11 +1340,13 @@ export class Story {
     const at = g.world.at;
     if (fresh) {
       g.setArea('ward');
-      g.player.teleport(new THREE.Vector3(238.5, 0, -1.8), Math.PI);
-      g.una.place(new THREE.Vector3(237.5, 0, -1.2), 0);
+      // 다시 시작할 때는 직원 통로 문 앞에서 (문은 이미 열려 있다)
+      g.player.teleport(new THREE.Vector3(240.6, 0, 6.4), Math.PI - 0.5);
+      g.una.place(new THREE.Vector3(239.6, 0, 5.8), Math.PI);
       g.una.show(true);
       g.light.setFlash(true);
       g.door('staff').locked = false;
+      g.openDoor('staff', true, false);
       g.save.flags.key = 1;
       g.hoppy.place(at.hoppySeat.clone(), -Math.PI / 2, 'seated');
       await g.ui.fade(false, 0.6);
@@ -1379,8 +1395,9 @@ export class Story {
       g.sfx.play('chute', { pos: at.chute, gain: 0.8 });
       g.una.show(false);
     })().catch(() => {});
-    // 투입구
+    // 투입구 (살펴보기는 치우고 뛰어들기만 남긴다: 같은 자리에 두 개가 있으면 E가 엉뚱한 쪽을 고를 수 있다)
     let jumped = false;
+    g.inter.remove('ex:chute');
     g.inter.add({
       id: 'chute:go',
       pos: at.chute,

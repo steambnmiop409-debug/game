@@ -16,7 +16,7 @@ import { Interactions, type Interactable } from './gameplay/interact';
 import { Screen } from './gameplay/tapes';
 import { Prologue } from './gameplay/prologue';
 import { UI, type Settings } from './ui/ui';
-import { CHARTS, CREDITS, EXAMINE, FAIL, NEXT, PLACES, TAPES, UNA, type Line, type Scan } from './data/text';
+import { CHARTS, CREDITS, EXAMINE, FAIL, GOALS, HINTS, NEXT, PLACES, TAPES, UNA, type Line, type Scan } from './data/text';
 import { clamp, damp, rng } from './core/util';
 import { Story } from './gameplay/story';
 
@@ -389,6 +389,9 @@ export class Game {
             this.sfx.play('door_shut', { pos: d.center.setY(1.1), gain: 0.25, rate: 1.8 });
             const msg = d.id.startsWith('stair') ? EXAMINE.stair[1] : d.id === 'clinic' ? EXAMINE.lockedWing[0] : d.id === 'staff' ? '"STAFF ONLY" — 열쇠가 필요하다.' : d.id === 'playroom' ? '놀이방 문이 잠겨 있다. 안쪽에서 음악 소리가 희미하게 난다.' : '잠겨 있다.';
             this.ui.tip(msg, 3);
+            // 잠긴 문 앞에서 헤매지 않도록, 지금 가야 할 곳을 이어서 알려 준다
+            const hint = this.currentHint();
+            if (hint) setTimeout(() => this.state === 'play' && this.ui.tip(hint, 8), 3000);
             return;
           }
           this.openDoor(d.id, !d.open);
@@ -885,11 +888,15 @@ export class Game {
       this.rounds.update(dt, sense);
       this.hoppy.update(dt, this.world.level, this.player.pos, this.t);
       if (this.area === 'road') this.prologue.update(dt);
+      // 문 열림·닫힘 애니메이션 (열린 각도가 충돌 판정도 정한다)
+      for (const d of this.world.level.doors) d.update(dt);
+      this.npcOpenDoors();
       this.updateEnvironment(dt);
       this.updateMusicLayers(dt);
       this.ui.stamina(this.player.stamina);
       this.ui.update(dt);
       this.story.update(dt);
+      this.updateHint(dt);
     }
     if (this.state === 'fail' || this.state === 'credits') {
       this.pace.update(dt);
@@ -929,9 +936,55 @@ export class Game {
     if (this.music.tension < 0.03 && want === 0) this.music.tension = 0;
   }
 
+  /** 우나, 회진, 쫓아오는 호피는 잠기지 않은 문 앞에 오면 문을 연다 (길 찾기는 문을 지나갈 수 있다고 본다) */
+  private npcOpenDoors() {
+    const movers: THREE.Vector3[] = [];
+    if (this.una.rig.root.visible && !this.una.poseLock && this.una.mode !== 'off') movers.push(this.una.pos);
+    for (const r of this.rounds.members) movers.push(r.pos);
+    if (this.hoppy.state === 'chase') movers.push(this.hoppy.pos);
+    if (!movers.length) return;
+    for (const d of this.world.level.doors) {
+      const k = d.def.kind;
+      if (d.open || d.locked || (k !== 'door' && k !== 'double') || d.id.startsWith('air')) continue;
+      const c = d.center;
+      if (movers.some((p) => Math.abs(p.x - c.x) < 1.1 && Math.abs(p.z - c.z) < 1.1)) this.openDoor(d.id, true);
+    }
+  }
+
+  // ───────────────────────────── 힌트 ─────────────────────────────
+
+  private stuckT = 0;
+  private stuckGoal: string | null = null;
+
+  /** 지금 목표에 맞는 구체적인 힌트 */
+  currentHint(): string | null {
+    const g = this.ui.goalText;
+    if (!g) return null;
+    const key = Object.keys(GOALS).find((k) => GOALS[k] === g);
+    return (key && HINTS[key]) || null;
+  }
+
+  showHint() {
+    const h = this.currentHint();
+    this.ui.tip(h ?? '지금은 주변을 살펴본다.', 9);
+    this.stuckT = 0;
+  }
+
+  /** 같은 목표에서 오래 머물면 힌트를 한 번씩 보여 준다 */
+  private updateHint(dt: number) {
+    if (this.ui.goalText !== this.stuckGoal) {
+      this.stuckGoal = this.ui.goalText;
+      this.stuckT = 0;
+    }
+    if (this.player.mode !== 'walk' || this.busy || this.ui.docOpen) return;
+    this.stuckT += dt;
+    if (this.stuckT > 75 && this.currentHint()) this.showHint();
+  }
+
   private handleActions() {
     const inp = this.input;
     const eye = this.player.eye;
+    if (inp.wasPressed('KeyH')) this.showHint();
     // 상호작용
     const it = this.inter.pick(eye, this.player.look, this.world.level, this.area);
     this.ui.prompt(it ? this.inter.promptOf(it) : null);
