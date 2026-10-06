@@ -1,0 +1,22 @@
+{
+  "name": "second-nature",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SECOND NATURE (세컨드 네이처) — Chapter 1",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "galmuri": "^2.40.3",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3"
+  }
+}
